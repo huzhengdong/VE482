@@ -1,0 +1,144 @@
+\documentclass[a4paper]{article}
+
+% 边距
+\usepackage[margin=0.72in]{geometry}
+
+\usepackage{float}
+% 图片格式
+\usepackage{subfigure}
+\usepackage{graphicx}
+
+% 代码块格式
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{fontspec}
+\newfontfamily\menlo{Menlo}
+\lstset{
+ columns=fixed,       
+ numbers=left,                                        % 在左侧显示行号
+ numberstyle=\tiny\menlo,	                          % 设定行号格式
+ basicstyle=\small\menlo,							  % 字体
+ frame=none,                                          % 不显示背景边框
+ backgroundcolor=\color[RGB]{245,245,244},            % 设定背景颜色
+ keywordstyle=\color[RGB]{40,40,255},                 % 设定关键字颜色
+ numberstyle=\footnotesize\color{darkgray},           
+ commentstyle=\color[RGB]{0,96,96},                % 设置代码注释的格式
+ stringstyle=\rmfamily\slshape\color[RGB]{128,0,0},   % 设置字符串格式
+ stringstyle=\color[RGB]{128,0,0},   				  % 设置字符串格式
+ showstringspaces=false,                            % 不显示字符串中的空格
+}
+
+% used for block comment
+\newcommand{\eat}[1]{}
+
+\usepackage{cite}
+
+\title{VE482 Lab9}
+% \author{Shen Feiyu 517370910116}
+
+\begin{document}
+
+\maketitle
+
+\section{Read Write Return Value}
+The read operation should copy the desired data from kernel space to user space 
+by functions like put\_user. \\
+The write operation should copy the data from user space buffer to kernel space 
+and do some operation. It's done through functions like get\_user.\\
+
+\section{Major Number and Minor Number}
+The major number tells you which driver handles which device file. 
+The minor number is used only by the driver itself to differentiate which device it's operating on, just in case the driver handles more than one device.
+
+\section{Add Char Device}
+\begin{lstlisting}[language=c]
+// cdev variable
+static struct cdev diceDev0;
+// init cdev with customized file operation
+cdev_init(&diceDev0, &fops0);
+// add device with major number and minor number in MKDEV(majorNumber, minorNumber) 
+// (here minorNumber is 0)
+cdev_add(&diceDev0, MKDEV(majorNumber, 0), 1);
+\end{lstlisting}
+
+\section{Code Location}
+\begin{lstlisting}[language=c]
+// module_init: /usr/src/linux-headers-5.4.0-53/include/linux/module.h
+// module_exit: /usr/src/linux-headers-5.4.0-53/include/linux/module.h
+// printk:      /usr/src/linux-headers-5.4.0-53/include/linux/printk.h
+// container_of: /usr/src/linux-headers-5.4.0-53/include/linux/kernel.h
+// dev_t:         /usr/src/linux-headers-5.4.0-53/include/linux/device.h
+
+// MAJOR:     /usr/src/linux-headers-5.4.0-53/include/uapi/linux/kdev_t.h
+// MINOR:     /usr/src/linux-headers-5.4.0-53/include/uapi/linux/kdev_t.h
+// MKDEV:     /usr/src/linux-headers-5.4.0-53/include/linux/kdev_t.h
+// alloc_chrdev_region:  /usr/src/linux-headers-5.4.0-53/include/linux/fs.h
+// module_param:    /usr/src/linux-headers-5.4.0-53/include/linux/moduleparam.h
+// cdev_init:        /usr/src/linux-headers-5.4.0-42/include/linux/cdev.h
+// cdev_add:       /usr/src/linux-headers-5.4.0-42/include/linux/cdev.h
+// cdev_del:       /usr/src/linux-headers-5.4.0-42/include/linux/cdev.h
+// THIS_MODULE:   /usr/src/linux-headers-5.4.0-42/include/linux/export.h:
+\end{lstlisting}
+
+\section{Generate Random Number}
+\begin{lstlisting}[language=c]
+static struct timespec ts;
+
+static int gen_rand(int mod) {
+    int rd;
+    getnstimeofday(&ts);
+    rd = ts.tv_nsec % mod;
+    return abs(rd);
+}
+\end{lstlisting}
+
+
+\section{Defind and Use Mudule Options}
+\begin{lstlisting}[language=c]
+// in code, define and use gen_sides like common variable
+static int gen_sides = 6;
+module_param(gen_sides,int,S_IRUGO);
+// when insmod, use:
+// sudo insmod dice.ko gen_sides=20
+\end{lstlisting}
+
+\section{Result}
+
+\begin{lstlisting}[language=sh]
+francis@ubuntu:~/code/lab9$ make
+make -C /lib/modules/5.4.0-53-generic/build/ M=/home/francis/code/lab9 modules CFLAGS='-std=c11'
+make[1]: Entering directory '/usr/src/linux-headers-5.4.0-53-generic'
+    CC [M]  /home/francis/code/lab9/dice.o
+    Building modules, stage 2.
+    MODPOST 1 modules
+    LD [M]  /home/francis/code/lab9/dice.ko
+make[1]: Leaving directory '/usr/src/linux-headers-5.4.0-53-generic'
+francis@ubuntu:~/code/lab9$ sudo insmod dice.ko gen_sides=20
+[sudo] password for francis:
+francis@ubuntu:~/code/lab9$ sudo -i
+root@ubuntu:~# echo 1 > /dev/DiceDev0
+root@ubuntu:~# cat /dev/DiceDev0
+-------
+| o o |
+|  o  |
+| o o |
+-------
+root@ubuntu:~# echo 2 > /dev/DiceDev1
+root@ubuntu:~# cat /dev/DiceDev1
+2 5
+root@ubuntu:~# echo 3 > /dev/DiceDev2
+root@ubuntu:~# cat /dev/DiceDev2
+15 2 6
+root@ubuntu:~# ls -l /dev/ | grep Dice
+crw-------  1 root    root    507,   0 Nov 25 22:42 DiceDev0
+crw-------  1 root    root    507,   1 Nov 25 22:42 DiceDev1
+crw-------  1 root    root    507,   2 Nov 25 22:42 DiceDev2
+\end{lstlisting}
+
+% \newpage
+% % reference part
+% \renewcommand\refname{Reference}
+% \bibliographystyle{plain}
+% \bibliography{ref}         % reference bib file
+
+\end{document}
